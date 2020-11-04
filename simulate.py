@@ -4,10 +4,42 @@ import random
 import statistics
 import urllib.request
 
+def get(url):
+    with urllib.request.urlopen(url) as response:
+        r = response.read()
+        return r
+
 votes = {}
 states = []
 probs = {}
 purl = 'https://www.predictit.org/api/marketdata/all/'
+
+def national(us):
+    print()
+    print("National Election Betting Odds")
+    for c in us['contracts']:
+        ltp = c['lastTradePrice']
+        by = c['bestBuyYesCost']
+        sn = c['bestSellNoCost']
+
+        sy = c['bestSellYesCost']
+        bn = c['bestBuyNoCost']
+        name = c['name']
+        #print( name)
+        #print(by)
+        #print(sn)
+        #print(sy)
+        #print(bn)
+        if ltp and by and sn and sy and bn:
+            avg = (by + (1-sn) + sy + (1-bn))/4.
+            print ("%s : %2.0f%%, Avg: %2.0f%%"%(name, ltp*100, avg*100))
+    print()
+
+aurl = 'https://www.predictit.org/api/marketdata/markets/2721/'
+ndata = json.loads(get(aurl))
+
+national(ndata)
+
 with open('electoralvotes.csv') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
@@ -15,8 +47,8 @@ with open('electoralvotes.csv') as csvfile:
         states.append(row[0])
         votes[row[0]] = int(row[1])
 
-with urllib.request.urlopen(purl) as response:
-    r = response.read()
+
+r = get(purl)
 bets = json.loads(r)
 for m in bets['markets']:
     for state in states:
@@ -54,24 +86,6 @@ def simulate(seed, epochs):
     return biden_votes, trump_votes
     
 
-"""
-biden_best = 0
-biden_seed = 0
-trump_best = 0
-trump_seed = 0
-for seed in range(10000):
-    biden_votes, trump_votes = simulate(seed, n)
-    biden_wins = sum(map(lambda x: x[0] > x[1], zip(biden_votes, trump_votes)))
-    trump_wins = sum(map(lambda x: x[0] < x[1], zip(biden_votes, trump_votes)))
-    if biden_wins > biden_best:
-        biden_best = biden_wins
-        biden_seed = seed
-        print ("Biden: %f %d"% (biden_wins/n, seed))
-    if trump_wins > trump_best:
-        trump_best = trump_wins
-        trump_seed = seed
-        print ("Trump: %f %d"% (trump_wins/n, seed))
-"""
 n = 100000
 
 biden_votes, trump_votes = simulate(0, n)
@@ -90,7 +104,7 @@ print()
 print("%d Simulations"%n)
 print("Counts: Biden: %d, Trump: %d, Ties: %d"%(biden_wins, trump_wins, tie))
 print("Probs:  Biden: %.2f%%, Trump: %.2f%%, Ties: %.2f%%"%(biden_wins*100.0/n, trump_wins*100.0/n, tie*100./n))
-print("Avg:    Biden: %f, Trump: %f"%(biden_mean, trump_mean))
+print("Avg:    Biden: %.2f, Trump: %.2f"%(biden_mean, trump_mean))
 print("Median: Biden: %d, Trump: %d"%(biden_med, trump_med))
 
-
+national(ndata)

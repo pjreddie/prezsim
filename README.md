@@ -1,5 +1,7 @@
 # Election Simulation
 
+[Live Updates!](https://pjreddie.com/prezsim/)
+
 Usage:
 
     python3 simulate.py

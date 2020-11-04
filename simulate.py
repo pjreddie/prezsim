@@ -16,7 +16,7 @@ with open('electoralvotes.csv') as csvfile:
 
 def get(url):
     with urllib.request.urlopen(url) as response:
-        r = response.read()
+        r = response.read().decode('utf-8')
         return r
 
 
@@ -76,6 +76,7 @@ def print_national(us):
             toprint += "%s : %2.0f%%, Avg: %2.0f%%\n"%(name, ltp*100, avg*100)
     if 'time' in us:
         toprint += "Updated at: " + us['time'] + "\n"
+    toprint += "\n"
     return toprint
 
 def get_national_data(fetch):
@@ -118,6 +119,7 @@ def print_state_data(probs):
     sortedstates = states
     sortedstates.sort(key=bprob)
     toprint += print_states(sortedstates, probs)
+    toprint += "\n"
     return toprint
 
 def simulate(probs, seed, epochs):
@@ -170,11 +172,11 @@ def cached():
     n = 10000
 
     statedata = get_state_data(0)
-    toprint += print_state_data(statedata)
     toprint += run_simulations(statedata, n)
 
     ndata = get_national_data(0)
     toprint += print_national(ndata)
+    toprint += print_state_data(statedata)
     return jsonify(toprint)
 
 @app.route('/reload/')
@@ -183,11 +185,11 @@ def reload():
     n = 10000
 
     statedata = get_state_data(1)
-    toprint += print_state_data(statedata)
     toprint += run_simulations(statedata, n)
 
     ndata = get_national_data(1)
     toprint += print_national(ndata)
+    toprint += print_state_data(statedata)
     return jsonify(toprint)
 
 
@@ -196,13 +198,13 @@ def index():
     template = """
 <!doctype html>
 <html>
-<body><pre id="odds"></pre></body>
+<body><a href="https://github.com/pjreddie/prezsim">Open Source on Github</a><pre id="odds"></pre></body>
 <script>
-fetch('/cached/')
+fetch('./cached/')
   .then(response => response.json())
   .then(data => document.getElementById("odds").innerHTML = data);
 
-fetch('/reload/')
+fetch('./reload/')
   .then(response => response.json())
   .then(data => document.getElementById("odds").innerHTML = data);
 </script>

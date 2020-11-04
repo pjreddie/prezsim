@@ -105,8 +105,12 @@ def print_states(statelist, probs):
 
 
 def print_state_data(probs):
-    print_states(states, probs)
+    #print("Alphabetical")
+    #print_states(states, probs)
 
+    print()
+    print()
+    print("Sorted")
     def bprob(state):
         return probs[state]
 

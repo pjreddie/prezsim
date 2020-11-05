@@ -1,0 +1,56 @@
+Alabama, 0
+Arkansas, 0
+Florida, 0
+Idaho, 0
+Indiana, 0
+Iowa, 0
+Kansas, 0
+Kentucky, 0
+Louisiana, 0
+ME-02, 0
+Mississippi, 0
+Missouri, 0
+Montana, 0
+Nebraska, 0
+North Dakota, 0
+Ohio, 0
+Oklahoma, 0
+South Carolina, 0
+South Dakota, 0
+Tennessee, 0
+Texas, 0
+Utah, 0
+West Virginia, 0
+Wyoming, 0
+NE-03, 0
+Alaska, 0
+NE-01, 0
+North Carolina, 0
+Georgia, 0
+Pennsylvania, 1
+Arizona, 1
+Nevada, 1
+Michigan, 1
+Wisconsin, 1
+ME-01, 1
+New Mexico, 1
+Minnesota, 1
+Virginia, 1
+New Jersey, 1
+Colorado, 1
+California, 1
+Oregon, 1
+New York, 1
+New Hampshire, 1
+Connecticut, 1
+Delaware, 1
+Hawaii, 1
+Illinois, 1
+Maine, 1
+Maryland, 1
+Massachusetts, 1
+NE-02, 1
+Rhode Island, 1
+Vermont, 1
+Washington, 1
+DC, 1

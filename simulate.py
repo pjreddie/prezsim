@@ -15,7 +15,7 @@ with open('electoralvotes.csv') as csvfile:
         votes[row[0]] = int(row[1])
 
 def get(url):
-    with urllib.request.urlopen(url) as response:
+    with urllib.request.urlopen(url, timeout=10) as response:
         r = response.read().decode('utf-8')
         return r
 
@@ -23,6 +23,10 @@ def get(url):
 def get_state_data(fetch):
     purl = 'https://www.predictit.org/api/marketdata/all/'
     state_data = {}
+    f = open("settled.txt")
+    for line in f:
+        line = line.strip().split(',')
+        state_data[line[0]] = float(line[1])
     try:
         bets = json.loads(open("states.json", "r").read())
     except:
@@ -91,8 +95,8 @@ def get_national_data(fetch):
             ndata = json.loads(get(aurl))
             ndata['time'] = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             open("national.json", "w").write(json.dumps(ndata))
-        except TypeError as e:
-            print(e)
+        except:
+            pass
     return ndata
 
 
@@ -213,12 +217,12 @@ fetch('./reload/')
 
 n = 10000
 ndata = get_national_data(1)
-print_national(ndata)
+print(print_national(ndata))
 
 statedata = get_state_data(1)
-print_state_data(statedata)
-run_simulations(statedata, n)
+print(print_state_data(statedata))
+print(run_simulations(statedata, n))
 
 
-print_national(ndata)
+print(print_national(ndata))
 

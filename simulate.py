@@ -2,165 +2,78 @@ import csv
 import json
 import random
 import statistics
-import urllib.request
 import datetime
+import requests
+import re
 
 states = []
 votes = {}
-with open('electoralvotes.csv') as csvfile:
-    reader = csv.reader(csvfile)
-    next(reader)
-    for row in reader:
-        states.append(row[0])
-        votes[row[0]] = int(row[1])
 
-def get(url):
-    with urllib.request.urlopen(url, timeout=10) as response:
-        r = response.read().decode('utf-8')
-        return r
-
-
-def get_state_data(fetch):
-    purl = 'https://www.predictit.org/api/marketdata/all/'
+def get_state_data():
     state_data = {}
-    f = open("settled.txt")
-    for line in f:
-        line = line.strip().split(',')
-        state_data[line[0]] = float(line[1])
-    try:
-        bets = json.loads(open("states.json", "r").read())
-    except:
-        print("Failed to load state cache")
+    r = requests.get("https://electionbettingodds.com")
 
-    if fetch:
-        try:
-            r = get(purl)
-            bets = json.loads(r)
-            bets['time'] = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            open("states.json", "w").write(json.dumps(bets))
-        except:
-            print("Failed to fetch state data")
+    p1 = r"case\s'([A-Z0-9]+)':\n.*?Republican:\s([\d\.]+)%.*?Democrat:\s([\d\.]+)%.*?Electoral votes:\s(\d+)"
+    matches = re.findall(p1, r.text)
 
-    for m in bets['markets']:
-        for state in states:
-            if 'Which party will win ' + state in m['name']:
-                dem = 0
-                rep = 0
-                for c in m['contracts']:
-                    if c['name'] == 'Democratic':
-                        dem = c['lastTradePrice']
-                    elif c['name'] == 'Republican':
-                        rep = c['lastTradePrice']
-                prob = dem / (dem+rep)
-                state_data[state] = prob
-    if 'time' in bets:
-        state_data['time'] = bets['time']
+    probs = {}
+
+    for match in matches:
+        state, republican_prob, democrat_prob, electoral_votes = match
+        p = float(democrat_prob) / (float(democrat_prob) + float(republican_prob))
+        state_data[state] = p
+        votes[state] = int(electoral_votes)
+
+    p2 = r"case\s'([A-Z0-9]+)':\n.*?Democrat:\s([\d\.]+)%.*?Republican:\s([\d\.]+)%.*?Electoral votes:\s(\d+)"
+    matches = re.findall(p2, r.text)
+
+    for match in matches:
+        state, democrat_prob, republican_prob, electoral_votes = match
+        p = float(democrat_prob) / (float(democrat_prob) + float(republican_prob))
+        state_data[state] = p
+        votes[state] = int(electoral_votes)
+
+    # Election betting odds doesn't have DC idk why
+    votes['DC'] = 3
+    state_data['DC'] = .99
     return state_data
 
-    
-
-def print_national(us):
-    toprint = ""
-    toprint += "National Election Betting Odds\n"
-    for c in us['contracts']:
-        ltp = c['lastTradePrice']
-        by = c['bestBuyYesCost']
-        sn = c['bestSellNoCost']
-
-        sy = c['bestSellYesCost']
-        bn = c['bestBuyNoCost']
-        name = c['name']
-        #print( name)
-        #print(by)
-        #print(sn)
-        #print(sy)
-        #print(bn)
-        if ltp and by and sn and sy and bn:
-            avg = (by + (1-sn) + sy + (1-bn))/4.
-            toprint += "%s : %2.0f%%, Avg: %2.0f%%\n"%(name, ltp*100, avg*100)
-    if 'time' in us:
-        toprint += "Updated at: " + us['time'] + "\n"
-    toprint += "\n"
-    return toprint
-
-def get_national_data(fetch):
-    try:
-        jsonstr = open("national.json").read()
-        ndata = json.loads(jsonstr)
-    except:
-        print("Couldn't load national.json")
-    if fetch:
-        try:
-            aurl = 'https://www.predictit.org/api/marketdata/markets/2721/'
-            ndata = json.loads(get(aurl))
-            ndata['time'] = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            open("national.json", "w").write(json.dumps(ndata))
-        except:
-            pass
-    return ndata
-
-
-
-def print_states(statelist, probs):
-    toprint = ""
-    svotes = 0
-    for state in statelist:
-        svotes += votes[state]
-        toprint+="%20s, %2d votes, %5.2f%% Biden, %5.2f%% Trump %3d\n"%(state, votes[state], 100*probs[state], 100*(1-probs[state]), svotes)
-    return toprint
-        
-
-
-def print_state_data(probs):
-    toprint = ""
-    #toprint += "Alphabetical\n"
-    #toprint += print_states(states, probs)
-
-    toprint +="Sorted\n"
-    def bprob(state):
-        return probs[state]
-
-    sortedstates = states
-    sortedstates.sort(key=bprob)
-    toprint += print_states(sortedstates, probs)
-    toprint += "\n"
-    return toprint
 
 def simulate(probs, seed, epochs):
     trump_votes = []
-    biden_votes = []
+    harris_votes = []
     random.seed(seed)
     for e in range(epochs):
-        biden = 0
+        harris = 0
         trump = 0
-        for state in states:
+        for state in probs.keys():
             if probs[state] > random.random():
-                biden += votes[state]
+                harris += votes[state]
             else:
                 trump += votes[state]
-        biden_votes.append(biden)
+        harris_votes.append(harris)
         trump_votes.append(trump)
-        # print("Biden: %d, Trump: %d"%(biden, trump))
-    return biden_votes, trump_votes
+        # print("Harris: %d, Trump: %d"%(harris, trump))
+    return harris_votes, trump_votes
 
 def run_simulations(probs, n):
     toprint = ""
-    biden_votes, trump_votes = simulate(probs, 0, n)
-    biden_wins = sum(map(lambda x: x[0] > x[1], zip(biden_votes, trump_votes)))
-    trump_wins = sum(map(lambda x: x[0] < x[1], zip(biden_votes, trump_votes)))
-    tie = sum(map(lambda x: x[0] == x[1], zip(biden_votes, trump_votes)))
-    biden_mean = statistics.mean(biden_votes)
+    harris_votes, trump_votes = simulate(probs, 0, n)
+    harris_wins = sum(map(lambda x: x[0] > x[1], zip(harris_votes, trump_votes)))
+    trump_wins = sum(map(lambda x: x[0] < x[1], zip(harris_votes, trump_votes)))
+    tie = sum(map(lambda x: x[0] == x[1], zip(harris_votes, trump_votes)))
+    harris_mean = statistics.mean(harris_votes)
     trump_mean = statistics.mean(trump_votes)
-    biden_med = statistics.median(biden_votes)
+    harris_med = statistics.median(harris_votes)
     trump_med = statistics.median(trump_votes)
 
 
     toprint += "\n"
     toprint += "%d Simulations\n"%n
-    toprint += "Counts: Biden: %d, Trump: %d, Ties: %d\n"%(biden_wins, trump_wins, tie)
-    toprint += "Probs:  Biden: %.2f%%, Trump: %.2f%%, Ties: %.2f%%\n"%(biden_wins*100.0/n, trump_wins*100.0/n, tie*100./n)
-    toprint += "Avg:    Biden: %.2f, Trump: %.2f\n"%(biden_mean, trump_mean)
-    toprint += "Median: Biden: %d, Trump: %d\n"%(biden_med, trump_med)
+    toprint += "Counts: Harris: %d, Trump: %d, Ties: %d\n"%(harris_wins, trump_wins, tie)
+    toprint += "Probs:  Harris: %.2f%%, Trump: %.2f%%, Ties: %.2f%%\n"%(harris_wins*100.0/n, trump_wins*100.0/n, tie*100./n)
+    toprint += "Avg:    Harris: %.2f, Trump: %.2f\n"%(harris_mean, trump_mean)
+    toprint += "Median: Harris: %d, Trump: %d\n"%(harris_med, trump_med)
     if 'time' in probs:
         toprint += "Updated at: " + probs['time'] + "\n"
     toprint += "\n"
@@ -191,9 +104,6 @@ def reload():
     statedata = get_state_data(1)
     toprint += run_simulations(statedata, n)
 
-    ndata = get_national_data(1)
-    toprint += print_national(ndata)
-    toprint += print_state_data(statedata)
     return jsonify(toprint)
 
 
@@ -215,14 +125,8 @@ fetch('./reload/')
 </html>"""
     return template
 
-n = 10000
-ndata = get_national_data(1)
-print(print_national(ndata))
+n = 100000
 
-statedata = get_state_data(1)
-print(print_state_data(statedata))
+statedata = get_state_data()
 print(run_simulations(statedata, n))
-
-
-print(print_national(ndata))
 
